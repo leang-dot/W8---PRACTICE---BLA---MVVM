@@ -1,26 +1,26 @@
-import 'package:blabla/ui/widgets/buttons/bla_button.dart';
-import 'package:blabla/ui/widgets/display/bla_divider.dart';
 import 'package:flutter/material.dart';
+import '/ui/widgets/buttons/bla_button.dart';
+import '/ui/widgets/display/bla_divider.dart';
 
-import '../../../model/ride/locations.dart';
-import '../../../model/ride_pref/ride_pref.dart';
-import '../../../services/ride_prefs_service.dart';
-import '../../../utils/animations_util.dart';
-import '../../../utils/date_time_utils.dart';
-import '../../theme/theme.dart';
-import '../buttons/bla_icon_button.dart';
-import 'bla_location_picker.dart';
-import 'bla_seat_picker.dart';
+import '../../../../model/ride/locations.dart';
+import '../../../../model/ride_pref/ride_pref.dart';
+import '../../../../services/ride_prefs_service.dart';
+import '../../../../utils/animations_util.dart';
+import '../../../../utils/date_time_utils.dart';
+import '../../../theme/theme.dart';
+import '../../buttons/bla_icon_button.dart';
+import '../location/bla_location_picker.dart';
+import '../seat/bla_seat_picker.dart';
 
 ///
-/// A  RidePreference Picker is a view to pick a RidePreference:
-///   - A depcarture location
+/// A RidePreference Picker is a view to pick a RidePreference:
+///   - A departure location
 ///   - An arrival location
 ///   - A date
 ///   - A number of seats
 ///
 class BlaRidePreferencePicker extends StatefulWidget {
-  final RidePreference? initRidePreference; // optional initial preference.
+  final RidePreference? initRidePreference;
 
   const BlaRidePreferencePicker({
     super.key,
@@ -37,9 +37,9 @@ class BlaRidePreferencePicker extends StatefulWidget {
 
 class _BlaRidePreferencePickerState extends State<BlaRidePreferencePicker> {
   Location? departure;
-  late DateTime departureDate;
   Location? arrival;
-  late int requestedSeats;
+  DateTime departureDate = DateTime.now();
+  int requestedSeats = 1;
 
   // ----------------------------------
   // Initialize the Form attributes
@@ -51,23 +51,23 @@ class _BlaRidePreferencePickerState extends State<BlaRidePreferencePicker> {
   }
 
   @override
-  // TODO  - This kind of update should not be usefull with states watch () !!
-  void didUpdateWidget(BlaRidePreferencePicker w) {
-    super.didUpdateWidget(w);
+  void didUpdateWidget(BlaRidePreferencePicker oldWidget) {
+    super.didUpdateWidget(oldWidget);
     init();
   }
 
   void init() {
     if (widget.initRidePreference != null) {
-      departure = widget.initRidePreference!.departure;
-      arrival = widget.initRidePreference!.arrival;
-      departureDate = widget.initRidePreference!.departureDate;
-      requestedSeats = widget.initRidePreference!.requestedSeats;
+      RidePreference pref = widget.initRidePreference!;
+
+      departure = pref.departure;
+      arrival = pref.arrival;
+      departureDate = pref.departureDate;
+      requestedSeats = pref.requestedSeats;
     } else {
-      // If no given preferences, we select default ones :
       departure = null;
-      departureDate = DateTime.now();
       arrival = null;
+      departureDate = DateTime.now();
       requestedSeats = 1;
     }
   }
@@ -77,40 +77,35 @@ class _BlaRidePreferencePickerState extends State<BlaRidePreferencePicker> {
   // ----------------------------------
 
   void onDeparturePressed() async {
-    // 1- Select a location
-    Location? selectedLocation = await Navigator.of(context).push<Location>(
+    Location? result = await Navigator.of(context).push<Location>(
       AnimationUtils.createBottomToTopRoute(
         BlaLocationPicker(initLocation: departure),
       ),
     );
 
-    // 2- Update the from if needed
-    if (selectedLocation != null) {
+    if (result != null) {
       setState(() {
-        departure = selectedLocation;
+        departure = result;
       });
     }
   }
 
   void onArrivalPressed() async {
-    // 1- Select a arrival
-    Location? selectedLocation = await Navigator.of(context).push<Location>(
+    Location? result = await Navigator.of(context).push<Location>(
       AnimationUtils.createBottomToTopRoute(
         BlaLocationPicker(initLocation: arrival),
       ),
     );
 
-    // 2- Update the from if needed
-    if (selectedLocation != null) {
+    if (result != null) {
       setState(() {
-        arrival = selectedLocation;
+        arrival = result;
       });
     }
   }
 
   void onSeatNumberPressed() async {
-    // 1- Select a arrival
-    int? selectedSeatNumber = await Navigator.of(context).push<int>(
+    int? result = await Navigator.of(context).push<int>(
       AnimationUtils.createRightToLeftRoute(
         BlaSeatPicker(
           initSeats: requestedSeats,
@@ -119,41 +114,48 @@ class _BlaRidePreferencePickerState extends State<BlaRidePreferencePicker> {
       ),
     );
 
-    // 2- Update the from if needed
-    if (selectedSeatNumber != null && selectedSeatNumber != requestedSeats) {
+    if (result != null && result != requestedSeats) {
       setState(() {
-        requestedSeats = selectedSeatNumber;
+        requestedSeats = result;
       });
     }
   }
 
-  void onSearch() async {
+  void onSearch() {
     bool hasDeparture = departure != null;
     bool hasArrival = arrival != null;
 
-    // TODO - Seat + date
+    // validate
+    if (!hasDeparture || !hasArrival) {
+      return;
+    }
 
-    bool preferenceIsValid = hasArrival && hasDeparture;
-    if (!preferenceIsValid) return;
-
-    // Callback with the selected preference
-    RidePreference newPreference = RidePreference(
+    RidePreference newPref = RidePreference(
       departure: departure!,
       departureDate: departureDate,
       arrival: arrival!,
       requestedSeats: requestedSeats,
     );
 
-    widget.onRidePreferenceSelected(newPreference);
+    widget.onRidePreferenceSelected(newPref);
   }
 
   void onSwappingLocationPressed() {
     setState(() {
-      // We switch only if both departure and arrivate are defined
       if (departure != null || arrival != null) {
         Location? temp = departure;
-        departure = arrival != null ? Location.copy(arrival!) : null;
-        arrival = temp != null ? Location.copy(temp) : null;
+
+        if (arrival != null) {
+          departure = Location.copy(arrival!);
+        } else {
+          departure = null;
+        }
+
+        if (temp != null) {
+          arrival = Location.copy(temp);
+        } else {
+          arrival = null;
+        }
       }
     });
   }
@@ -161,17 +163,42 @@ class _BlaRidePreferencePickerState extends State<BlaRidePreferencePicker> {
   // ----------------------------------
   // Compute the widgets rendering
   // ----------------------------------
-  String get departureLabel =>
-      departure != null ? departure!.name : "Leaving from";
-  String get arrivalLabel => arrival != null ? arrival!.name : "Going to";
 
-  bool get showDeparturePLaceHolder => departure == null;
-  bool get showArrivalPLaceHolder => arrival == null;
+  String get departureLabel {
+    if (departure != null) {
+      return departure!.name;
+    } else {
+      return "Leaving from";
+    }
+  }
 
-  String get dateLabel => DateTimeUtils.formatDateTime(departureDate);
-  String get numberLabel => "$requestedSeats";
+  String get arrivalLabel {
+    if (arrival != null) {
+      return arrival!.name;
+    } else {
+      return "Going to";
+    }
+  }
 
-  bool get switchVisible => arrival != null || departure != null;
+  bool get showDeparturePLaceHolder {
+    return departure == null;
+  }
+
+  bool get showArrivalPLaceHolder {
+    return arrival == null;
+  }
+
+  String get dateLabel {
+    return DateTimeUtils.formatDateTime(departureDate);
+  }
+
+  String get numberLabel {
+    return requestedSeats.toString();
+  }
+
+  bool get switchVisible {
+    return departure != null || arrival != null;
+  }
 
   // ----------------------------------
   // Build the widgets
@@ -179,14 +206,13 @@ class _BlaRidePreferencePickerState extends State<BlaRidePreferencePicker> {
   @override
   Widget build(BuildContext context) {
     return Column(
-      mainAxisAlignment: MainAxisAlignment.start,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: BlaSpacings.m),
           child: Column(
             children: [
-              // 1 - Input the ride departure
+              // 1 - Departure
               RidePrefInput(
                 isPlaceHolder: showDeparturePLaceHolder,
                 title: departureLabel,
@@ -199,7 +225,7 @@ class _BlaRidePreferencePickerState extends State<BlaRidePreferencePicker> {
               ),
               const BlaDivider(),
 
-              // 2 - Input the ride arrival
+              // 2 - Arrival
               RidePrefInput(
                 isPlaceHolder: showArrivalPLaceHolder,
                 title: arrivalLabel,
@@ -208,15 +234,15 @@ class _BlaRidePreferencePickerState extends State<BlaRidePreferencePicker> {
               ),
               const BlaDivider(),
 
-              // 3 - Input the ride date
+              // 3 - Date
               RidePrefInput(
                 title: dateLabel,
                 leftIcon: Icons.calendar_month,
-                onPressed: () => {},
+                onPressed: () {},
               ),
               const BlaDivider(),
 
-              // 4 - Input the requested number of seats
+              // 4 - Seats
               RidePrefInput(
                 title: numberLabel,
                 leftIcon: Icons.person_2_outlined,
@@ -226,7 +252,7 @@ class _BlaRidePreferencePickerState extends State<BlaRidePreferencePicker> {
           ),
         ),
 
-        // 5 - Launch a search
+        // 5 - Search button
         BlaButton(text: 'Search', onPressed: onSearch),
       ],
     );
@@ -238,10 +264,7 @@ class RidePrefInput extends StatelessWidget {
   final VoidCallback onPressed;
   final IconData leftIcon;
 
-  // If true the text is displayed ligher
   final bool isPlaceHolder;
-
-  // A right button can be optionally provided
   final IconData? rightIcon;
   final VoidCallback? onRightIconPressed;
 
@@ -250,23 +273,30 @@ class RidePrefInput extends StatelessWidget {
     required this.title,
     required this.onPressed,
     required this.leftIcon,
-    this.rightIcon, //   optional
-    this.onRightIconPressed, //   optional
+    this.rightIcon,
+    this.onRightIconPressed,
     this.isPlaceHolder = false,
   });
 
-  Color get textColor =>
-      isPlaceHolder ? BlaColors.textLight : BlaColors.textNormal;
+  Color get textColor {
+    if (isPlaceHolder) {
+      return BlaColors.textLight;
+    } else {
+      return BlaColors.textNormal;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return ListTile(
       onTap: onPressed,
+      leading: Icon(leftIcon, color: BlaColors.iconLight),
+
       title: Text(
         title,
         style: BlaTextStyles.button.copyWith(fontSize: 14, color: textColor),
       ),
-      leading: Icon(leftIcon, size: BlaSize.icon, color: BlaColors.iconLight),
+
       trailing: rightIcon != null
           ? BlaIconButton(icon: rightIcon, onPressed: onRightIconPressed)
           : null,
