@@ -13,7 +13,7 @@ class RidePreferenceRepositoryMock implements RidePreference {
   }
 
   @override
-  Future<List<RidePreference>> getHistory() async {
+  List<RidePreference> getHistory() {
     List<RidePreference> ridePref = fakeRidePrefs;
     return ridePref;
   }

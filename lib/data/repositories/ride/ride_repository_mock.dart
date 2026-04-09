@@ -7,7 +7,7 @@ class RideRepositoryMock implements RideRepository {
   List<Ride> rides = [];
 
   @override
-  Future<List<Ride>> getAllRides() async {
+  List<Ride> getAllRides() {
     rides = fakeRides;
     return rides;
   }
